@@ -4,3 +4,5 @@ WORKDIR /app
 COPY ./res/applerefurbished /app/
 
 ENTRYPOINT ["/app/applerefurbished"]
+
+CMD ["-server"]
