@@ -144,7 +144,7 @@ func main() {
 	log.Printf("Storing data under bucket: '%s'", *bucket)
 	var filepath string
 	if *filename != "" {
-		filepath, err = storeDataWithFilename(context.Background(), res, *filename, *bucket)
+		filepath, err = storeDataWithFilename(context.Background(), res, *bucket, *filename)
 	} else {
 		filepath, err = storeData(context.Background(), res, *bucket)
 	}
