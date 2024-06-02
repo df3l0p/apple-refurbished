@@ -1,6 +1,6 @@
 # Apple refurbished
 
-Simple Golang golagn for pulling Apple's refurbished website and dumping the Computers there in GCS.
+Simple Golang app for pulling Apple's refurbished computers and dumping them in GCS.
 
 # Docker
 
