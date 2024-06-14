@@ -5,6 +5,7 @@ import (
 	applerefurbished "apple-refurbished/src/lib"
 	server "apple-refurbished/src/server"
 	"flag"
+	"fmt"
 	"log"
 )
 
@@ -14,6 +15,8 @@ var (
 	filename = flag.String("filename", "", "(optional) the filename for the dump")
 
 	srv = flag.Bool("server", false, "Server mode")
+
+	file = flag.String("file", "", "A file containing the JSON from Apple's refurbished website")
 )
 
 func xor(a, b bool) bool {
@@ -23,13 +26,25 @@ func xor(a, b bool) bool {
 func main() {
 	flag.Parse()
 
-	if !xor(*srv, (*bucket != "" || *filename != "")) {
-		log.Fatalf("set either server or bucket/filename")
+	if !xor(*file != "", xor(*srv, (*bucket != "" || *filename != ""))) {
+		log.Fatalf("set either filer or server or bucket/filename")
 	}
 
 	if *srv {
 		server.Run()
 	}
 
-	cmd.Run(*url, *bucket, *filename)
+	if *file != "" {
+		res, err := applerefurbished.ProcessJsonFile(*file)
+		if err != nil {
+			log.Fatalf("unable to process json file '%s': %v", *file, err)
+		}
+		fmt.Print(res)
+		return
+	}
+
+	err := cmd.Run(*url, *bucket, *filename)
+	if err != nil {
+		log.Fatal(err)
+	}
 }

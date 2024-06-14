@@ -2,12 +2,13 @@ package cmd
 
 import (
 	applerefurbished "apple-refurbished/src/lib"
+	"fmt"
 	"log"
 )
 
-func Run(url string, bucket string, filename string) {
+func Run(url string, bucket string, filename string) error {
 	if bucket == "" {
-		log.Fatal("missing bucket")
+		return fmt.Errorf("missing bucket")
 	}
 
 	log.Printf("fetching data from: '%s'", url)
@@ -20,8 +21,9 @@ func Run(url string, bucket string, filename string) {
 		filepath, err = applerefurbished.Dump(url, bucket)
 	}
 	if err != nil {
-		log.Fatalf("unable do dump: %v", err)
+		fmt.Errorf("unable do dump: %v", err)
 	}
 
 	log.Printf("Data available under: 'gs://%s/%s'", bucket, filepath)
+	return nil
 }

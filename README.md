@@ -23,3 +23,10 @@ go run src/main.go -server
 
 curl "http://localhost:8080/?bucket=<some-bucket>&filename=testhttp"
 ```
+
+# Query
+
+```
+| rename filters.dimensions.dimensionRelYear as filters.dimensions.year, dimensionScreensize as dimension, filters.dimensions.tsMemorySize as ram, filters.dimensions.dimensionCapacity as disk, price.currentPrice.amount as chf
+| table _time, title, year, dimension, ram, disk, chf
+```
