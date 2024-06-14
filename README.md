@@ -27,6 +27,11 @@ curl "http://localhost:8080/?bucket=<some-bucket>&filename=testhttp"
 # Query
 
 ```
-| rename filters.dimensions.dimensionRelYear as filters.dimensions.year, dimensionScreensize as dimension, filters.dimensions.tsMemorySize as ram, filters.dimensions.dimensionCapacity as disk, price.currentPrice.amount as chf
+index=* title="*macbook*"
+| sort _time 0
+| rename filters.dimensions.dimensionRelYear as filters.dimensions.year, dimensionScreensize as dimension, filters.dimensions.tsMemorySize as ram, filters.dimensions.dimensionCapacity as disk, price.currentPrice.raw_amount as chf
+| fillnull value="" title, year, dimension, ram, disk, chf
 | table _time, title, year, dimension, ram, disk, chf
+| sort - chf
+| dedup title, year, dimension, ram, disk, chf
 ```
