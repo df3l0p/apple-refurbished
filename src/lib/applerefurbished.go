@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -16,6 +17,21 @@ import (
 )
 
 const DefaultUrl = "https://www.apple.com/ch-fr/shop/refurbished/mac/14-pouces-macbook-pro"
+
+type ComputerJson struct {
+	DateTime time.Time `json:omitempty`
+	Tiles    []Tiles   `json:"tiles"`
+}
+type Tiles struct {
+	DateTime          time.Time              `json:omitempty`
+	Filters           map[string]interface{} `json:"filters"`
+	Lob               string                 `json:"lob"`
+	OmnitureModel     map[string]interface{} `json:"omnitureModel"`
+	PartNumber        string                 `json:"partNumber"`
+	Price             map[string]interface{} `json:"price,omitempty"`
+	ProductDetailsURL string                 `json:"productDetailsUrl"`
+	Title             string                 `json:"title"`
+}
 
 func Dump(url string, bucketName string) (string, error) {
 	filename := fmt.Sprintf("%s.json", time.Now().Format("2006-01-02"))
@@ -27,11 +43,30 @@ func DumpWithFilename(url string, bucketName string, filename string) (string, e
 	if err != nil {
 		return "", err
 	}
-	res, err := getJsonWithComputers(data)
+	res, err := computersFromHtml(data)
 	if err != nil {
 		return "", err
 	}
+
 	return storeDataWithFilename(context.Background(), res, bucketName, filename)
+}
+
+func ProcessJsonFile(filePath string) (string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", fmt.Errorf("unable to open file: %v", file)
+	}
+	defer file.Close()
+
+	content, err := io.ReadAll(file)
+	if err != nil {
+		return "", fmt.Errorf("unable to read file: %v", err)
+	}
+	c, err := computersFromJson(string(content))
+	if err != nil {
+		return "", fmt.Errorf("unable to retrieve computers from json: %v", err)
+	}
+	return ndJsonFromComputerJson(c)
 }
 
 func fetchURL(url string) (string, error) {
@@ -63,7 +98,7 @@ func fetchURL(url string) (string, error) {
 	return string(body), nil
 }
 
-func getJsonWithComputers(htmlContent string) (map[string]interface{}, error) {
+func computersFromHtml(htmlContent string) (*ComputerJson, error) {
 	doc, err := html.Parse(strings.NewReader(htmlContent))
 	if err != nil {
 		return nil, err
@@ -87,16 +122,40 @@ func getJsonWithComputers(htmlContent string) (map[string]interface{}, error) {
 		return nil, fmt.Errorf("unable to find valid JSON next to 'REFURB_GRID_BOOTSTRAP' string")
 	}
 
-	var res map[string]interface{}
-	err = json.Unmarshal([]byte(js), &res)
+	return computersFromJson(js)
+}
+
+func computersFromJson(js string) (*ComputerJson, error) {
+	var res *ComputerJson
+	err := json.Unmarshal([]byte(js), &res)
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse JSON '%s': %v", js[:10], err)
 	}
+	res.DateTime = time.Now()
 
 	return res, nil
 }
 
-func storeDataWithFilename(ctx context.Context, data map[string]interface{}, bucketName string, filename string) (string, error) {
+func ndJsonFromComputerJson(cj *ComputerJson) (string, error) {
+	if cj == nil {
+		return "", fmt.Errorf("ComputerJson is nil")
+	}
+
+	var buffer bytes.Buffer
+
+	for _, tile := range cj.Tiles {
+		tile.DateTime = cj.DateTime
+		b, err := json.Marshal(tile)
+		if err != nil {
+			return "", fmt.Errorf("unable to marshal tile: %v", err)
+		}
+		buffer.Write(b)
+		buffer.WriteByte('\n')
+	}
+	return buffer.String(), nil
+}
+
+func storeDataWithFilename(ctx context.Context, data *ComputerJson, bucketName string, filename string) (string, error) {
 	client, err := storage.NewClient(ctx)
 	if err != nil {
 		return "", fmt.Errorf("unable to create storage object: %v", err)
@@ -112,12 +171,12 @@ func storeDataWithFilename(ctx context.Context, data map[string]interface{}, buc
 
 	writer.ObjectAttrs.ContentType = "application/json"
 
-	b, err := json.Marshal(data)
+	s, err := ndJsonFromComputerJson(data)
 	if err != nil {
-		return "", fmt.Errorf("unable to serialize data")
+		return "", fmt.Errorf("unable to get ndjson computers: %v", err)
 	}
 
-	if _, err := io.Copy(writer, bytes.NewReader(b)); err != nil {
+	if _, err := io.Copy(writer, strings.NewReader(s)); err != nil {
 		return "", fmt.Errorf("failed to copy file to bucket: %v", err)
 	}
 
@@ -126,9 +185,4 @@ func storeDataWithFilename(ctx context.Context, data map[string]interface{}, buc
 	}
 
 	return filepath, nil
-}
-
-func storeData(ctx context.Context, data map[string]interface{}, bucketName string) (string, error) {
-	filename := fmt.Sprintf("%s.json", time.Now().Format("2006-01-02"))
-	return storeDataWithFilename(ctx, data, bucketName, filename)
 }
