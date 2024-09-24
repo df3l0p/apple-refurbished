@@ -28,7 +28,6 @@ curl "http://localhost:8080/?bucket=<some-bucket>&filename=testhttp"
 
 ```
 index=* title="*macbook*"
-| sort _time 0
 | rename filters.dimensions.dimensionRelYear as year, filters.dimensions.dimensionScreensize as dimension, filters.dimensions.tsMemorySize as ram, filters.dimensions.dimensionCapacity as disk, price.currentPrice.raw_amount as chf
 | fillnull value="" title, year, dimension, ram, disk, chf
 | stats min(_time) as first_seen, max(_time) as last_seen, values(title) as title, values(year) as year, values(dimension) as dimension, values(ram) as ram, values(disk) as disk, values(chf) as chf by partNumber
