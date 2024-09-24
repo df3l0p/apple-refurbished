@@ -29,9 +29,10 @@ curl "http://localhost:8080/?bucket=<some-bucket>&filename=testhttp"
 ```
 index=* title="*macbook*"
 | sort _time 0
-| rename filters.dimensions.dimensionRelYear as filters.dimensions.year, dimensionScreensize as dimension, filters.dimensions.tsMemorySize as ram, filters.dimensions.dimensionCapacity as disk, price.currentPrice.raw_amount as chf
+| rename filters.dimensions.dimensionRelYear as year, filters.dimensions.dimensionScreensize as dimension, filters.dimensions.tsMemorySize as ram, filters.dimensions.dimensionCapacity as disk, price.currentPrice.raw_amount as chf
 | fillnull value="" title, year, dimension, ram, disk, chf
-| table _time, title, year, dimension, ram, disk, chf
+| stats min(_time) as first_seen, max(_time) as last_seen, values(title) as title, values(year) as year, values(dimension) as dimension, values(ram) as ram, values(disk) as disk, values(chf) as chf by partNumber
+| eval is_available=if(last_seen>relative_time(now(), "-1d"), 1, 0)
+| convert ctime(first_seen), ctime(last_seen)
 | sort - chf
-| dedup title, year, dimension, ram, disk, chf
 ```
